@@ -26,7 +26,8 @@ export default function Navbar() {
     <div className="navbar">
       <div className="navbar-inner">
         <Link href="/" className="logo">
-          SPOOKTUBE
+          <span className="logo-word">SPÖÖK</span>
+          <span className="logo-pill">TUBE</span>
         </Link>
 
         <form className="nav-search" onSubmit={handleSearch}>
