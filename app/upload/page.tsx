@@ -81,7 +81,7 @@ export default function UploadPage() {
         channel_id: channelId,
         title,
         description,
-        content_warning: contentWarning,
+        content_warning: contentWarning.trim(),
         video_url: urlData.publicUrl,
       })
       .select()
@@ -154,14 +154,13 @@ export default function UploadPage() {
             <input required value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div className="field">
-            <label>Content warning</label>
+            <label>Content warning (optional)</label>
             <input
-              required
               placeholder="e.g. jump scares, gore, flashing lights"
               value={contentWarning}
               onChange={(e) => setContentWarning(e.target.value)}
             />
-            <p className="hint">Required on every upload — shown as a badge on the thumbnail.</p>
+            <p className="hint">Leave blank if the clip doesn't need one — shown as a badge on the thumbnail otherwise.</p>
           </div>
           <div className="field">
             <label>Description</label>
