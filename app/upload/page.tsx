@@ -8,6 +8,7 @@ import { supabase } from "../../lib/supabaseClient";
 import type { Channel } from "../../lib/types";
 
 const MAX_VIDEO_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_THUMB_BYTES = 3 * 1024 * 1024; // 3MB
 
 export default function UploadPage() {
   const { user, loading: userLoading } = useUser();
@@ -19,6 +20,8 @@ export default function UploadPage() {
   const [description, setDescription] = useState("");
   const [contentWarning, setContentWarning] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [thumbPreview, setThumbPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -73,6 +76,26 @@ export default function UploadPage() {
 
     const { data: urlData } = supabase.storage.from("videos").getPublicUrl(path);
 
+    let thumbnailUrl: string | null = null;
+    if (thumbFile) {
+      setStatus("uploading thumbnail...");
+      const thumbExt = thumbFile.name.split(".").pop();
+      const thumbPath = `${user.id}/${crypto.randomUUID()}-thumb.${thumbExt}`;
+
+      const { error: thumbError } = await supabase.storage
+        .from("videos")
+        .upload(thumbPath, thumbFile);
+
+      if (thumbError) {
+        setSubmitting(false);
+        setStatus(null);
+        setError(thumbError.message);
+        return;
+      }
+
+      thumbnailUrl = supabase.storage.from("videos").getPublicUrl(thumbPath).data.publicUrl;
+    }
+
     setStatus("saving details...");
 
     const { data: video, error: insertError } = await supabase
@@ -83,6 +106,7 @@ export default function UploadPage() {
         description,
         content_warning: contentWarning.trim(),
         video_url: urlData.publicUrl,
+        thumbnail_url: thumbnailUrl,
       })
       .select()
       .single();
@@ -148,6 +172,33 @@ export default function UploadPage() {
               }}
             />
             <p className="hint">10MB max per clip.</p>
+          </div>
+          <div className="field">
+            <label>Thumbnail (optional)</label>
+            <label className="thumb-picker">
+              {thumbPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={thumbPreview} alt="" />
+              ) : (
+                <span className="thumb-picker-label">click to choose an image</span>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  if (f && f.size > MAX_THUMB_BYTES) {
+                    setError(`That image is ${(f.size / (1024 * 1024)).toFixed(1)}MB — 3MB max.`);
+                    e.target.value = "";
+                    return;
+                  }
+                  setError(null);
+                  setThumbFile(f);
+                  setThumbPreview(f ? URL.createObjectURL(f) : null);
+                }}
+              />
+            </label>
+            <p className="hint">Leave blank to use a frame from the video instead.</p>
           </div>
           <div className="field">
             <label>Title</label>
