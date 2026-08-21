@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { useUser } from "../../../lib/useUser";
+import { useIsAdmin } from "../../../lib/useIsAdmin";
 import type { Channel, Video } from "../../../lib/types";
 import VideoCard from "../../../components/VideoCard";
 import SubscribeButton from "../../../components/SubscribeButton";
@@ -11,12 +13,16 @@ const MAX_AVATAR_BYTES = 3 * 1024 * 1024; // 3MB
 
 export default function ChannelPage({ params }: { params: { handle: string } }) {
   const { user } = useUser();
+  const { isAdmin } = useIsAdmin(user);
+  const router = useRouter();
   const [channel, setChannel] = useState<Channel | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [subCount, setSubCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [deletingChannel, setDeletingChannel] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +72,30 @@ export default function ChannelPage({ params }: { params: { handle: string } }) 
   }, [params.handle]);
 
   const isOwner = !!user && !!channel && user.id === channel.owner_id;
+  const canDelete = isOwner || isAdmin;
+
+  async function handleDeleteChannel() {
+    if (!channel) return;
+    if (
+      !window.confirm(
+        `Delete the channel "${channel.name}" and everything on it (all videos, comments, likes)? This can't be undone.`
+      )
+    )
+      return;
+
+    setDeletingChannel(true);
+    setDeleteError(null);
+
+    const { error } = await supabase.from("channels").delete().eq("id", channel.id);
+
+    if (error) {
+      setDeletingChannel(false);
+      setDeleteError(error.message);
+      return;
+    }
+
+    router.push("/");
+  }
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -167,7 +197,23 @@ export default function ChannelPage({ params }: { params: { handle: string } }) 
           {avatarError && <p className="error-text">{avatarError}</p>}
         </div>
         <SubscribeButton channelId={channel.id} ownerId={channel.owner_id} user={user} />
+        {canDelete && (
+          <button
+            className="btn"
+            type="button"
+            onClick={handleDeleteChannel}
+            disabled={deletingChannel}
+            style={{ color: "#c0392b" }}
+          >
+            {deletingChannel ? "deleting..." : isOwner ? "delete channel" : "delete channel (admin)"}
+          </button>
+        )}
       </div>
+      {deleteError && (
+        <div className="page" style={{ paddingTop: 0 }}>
+          <p className="error-text">{deleteError}</p>
+        </div>
+      )}
 
       <div className="page">
         {videos.length === 0 ? (

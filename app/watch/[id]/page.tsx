@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { useUser } from "../../../lib/useUser";
+import { useIsAdmin } from "../../../lib/useIsAdmin";
 import { getAnonViewerId } from "../../../lib/viewerId";
 import type { Video, Channel } from "../../../lib/types";
 import ContentWarningBadge from "../../../components/ContentWarningBadge";
@@ -15,6 +16,7 @@ import CommentSection from "../../../components/CommentSection";
 
 export default function WatchPage({ params }: { params: { id: string } }) {
   const { user, loading: userLoading } = useUser();
+  const { isAdmin } = useIsAdmin(user);
   const router = useRouter();
   const [video, setVideo] = useState<Video | null>(null);
   const [channel, setChannel] = useState<Channel | null>(null);
@@ -78,6 +80,7 @@ export default function WatchPage({ params }: { params: { id: string } }) {
   }, [params.id, user, userLoading]);
 
   const isOwner = !!user && !!channel && user.id === channel.owner_id;
+  const canDelete = isOwner || isAdmin;
 
   async function handleDelete() {
     if (!video || !channel) return;
@@ -134,7 +137,7 @@ export default function WatchPage({ params }: { params: { id: string } }) {
 
         <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
           <ContentWarningBadge text={video.content_warning} />
-          {isOwner && (
+          {canDelete && (
             <button
               className="btn"
               type="button"
@@ -142,7 +145,7 @@ export default function WatchPage({ params }: { params: { id: string } }) {
               disabled={deleting}
               style={{ marginLeft: "auto", color: "#c0392b" }}
             >
-              {deleting ? "deleting..." : "delete this clip"}
+              {deleting ? "deleting..." : isOwner ? "delete this clip" : "delete this clip (admin)"}
             </button>
           )}
         </div>
