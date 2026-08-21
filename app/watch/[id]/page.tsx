@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { useUser } from "../../../lib/useUser";
 import { getAnonViewerId } from "../../../lib/viewerId";
@@ -14,12 +15,15 @@ import CommentSection from "../../../components/CommentSection";
 
 export default function WatchPage({ params }: { params: { id: string } }) {
   const { user, loading: userLoading } = useUser();
+  const router = useRouter();
   const [video, setVideo] = useState<Video | null>(null);
   const [channel, setChannel] = useState<Channel | null>(null);
   const [viewCount, setViewCount] = useState(0);
   const [likeCount, setLikeCount] = useState(0);
   const [subCount, setSubCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +77,26 @@ export default function WatchPage({ params }: { params: { id: string } }) {
       });
   }, [params.id, user, userLoading]);
 
+  const isOwner = !!user && !!channel && user.id === channel.owner_id;
+
+  async function handleDelete() {
+    if (!video || !channel) return;
+    if (!window.confirm("Delete this clip for good? This can't be undone.")) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    const { error } = await supabase.from("videos").delete().eq("id", video.id);
+
+    if (error) {
+      setDeleting(false);
+      setDeleteError(error.message);
+      return;
+    }
+
+    router.push(`/channel/${channel.handle}`);
+  }
+
   if (loading) return <div className="page empty">loading tape...</div>;
   if (!video || !channel) return <div className="page empty">this clip doesn't exist (or got taped over).</div>;
 
@@ -108,9 +132,21 @@ export default function WatchPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
           <ContentWarningBadge text={video.content_warning} />
+          {isOwner && (
+            <button
+              className="btn"
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{ marginLeft: "auto", color: "#c0392b" }}
+            >
+              {deleting ? "deleting..." : "delete this clip"}
+            </button>
+          )}
         </div>
+        {deleteError && <p className="error-text">{deleteError}</p>}
 
         {video.description && <div className="desc-box">{video.description}</div>}
 

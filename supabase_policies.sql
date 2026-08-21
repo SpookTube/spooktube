@@ -62,3 +62,16 @@ create policy "own folder upload" on storage.objects for insert to authenticated
   bucket_id = 'videos' and (storage.foldername(name))[1] = auth.uid()::text
 );
 create policy "public read video files" on storage.objects for select using (bucket_id = 'videos');
+
+-- Channel avatars: each user can only write inside their own folder,
+-- and can overwrite/remove their own files (so re-uploading a pic works)
+create policy "own folder avatar upload" on storage.objects for insert to authenticated with check (
+  bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+);
+create policy "own folder avatar update" on storage.objects for update to authenticated using (
+  bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+);
+create policy "own folder avatar delete" on storage.objects for delete to authenticated using (
+  bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+);
+create policy "public read avatar files" on storage.objects for select using (bucket_id = 'avatars');
