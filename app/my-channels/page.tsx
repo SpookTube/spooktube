@@ -58,7 +58,13 @@ export default function MyChannelsPage() {
     setCreating(false);
 
     if (error) {
-      setError(error.message.includes("duplicate") ? "That handle is taken." : error.message);
+      if (error.message.includes("channels_name_unique")) {
+        setError("That channel name is already taken.");
+      } else if (error.message.includes("duplicate")) {
+        setError("That handle is taken.");
+      } else {
+        setError(error.message);
+      }
       return;
     }
 

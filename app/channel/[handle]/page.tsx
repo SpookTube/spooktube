@@ -23,6 +23,10 @@ export default function ChannelPage({ params }: { params: { handle: string } }) 
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [deletingChannel, setDeletingChannel] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +77,50 @@ export default function ChannelPage({ params }: { params: { handle: string } }) 
 
   const isOwner = !!user && !!channel && user.id === channel.owner_id;
   const canDelete = isOwner || isAdmin;
+  const canManage = isOwner || isAdmin;
+
+  function startEditingName() {
+    if (!channel) return;
+    setNameInput(channel.name);
+    setNameError(null);
+    setEditingName(true);
+  }
+
+  async function handleRenameSave() {
+    if (!channel) return;
+    const trimmed = nameInput.trim();
+
+    if (!trimmed) {
+      setNameError("Name can't be empty.");
+      return;
+    }
+    if (trimmed === channel.name) {
+      setEditingName(false);
+      return;
+    }
+
+    setNameSaving(true);
+    setNameError(null);
+
+    const { data, error } = await supabase
+      .from("channels")
+      .update({ name: trimmed })
+      .eq("id", channel.id)
+      .select()
+      .single();
+
+    setNameSaving(false);
+
+    if (error) {
+      setNameError(
+        error.message.includes("duplicate") ? "That name is already taken." : error.message
+      );
+      return;
+    }
+
+    setChannel(data);
+    setEditingName(false);
+  }
 
   async function handleDeleteChannel() {
     if (!channel) return;
@@ -189,7 +237,57 @@ export default function ChannelPage({ params }: { params: { handle: string } }) 
           )}
         </div>
         <div style={{ flex: 1 }}>
-          <h1>{channel.name}</h1>
+          {editingName ? (
+            <div style={{ marginBottom: 6 }}>
+              <input
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                autoFocus
+                style={{
+                  background: "var(--void)",
+                  border: "1px solid var(--hairline)",
+                  color: "var(--bone)",
+                  padding: "6px 10px",
+                  borderRadius: 3,
+                  fontSize: 20,
+                  fontWeight: 700,
+                  width: "100%",
+                  maxWidth: 320,
+                }}
+              />
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button className="btn btn-primary" type="button" onClick={handleRenameSave} disabled={nameSaving}>
+                  {nameSaving ? "saving..." : "save"}
+                </button>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => {
+                    setEditingName(false);
+                    setNameError(null);
+                  }}
+                  disabled={nameSaving}
+                >
+                  cancel
+                </button>
+              </div>
+              {nameError && <p className="error-text">{nameError}</p>}
+            </div>
+          ) : (
+            <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {channel.name}
+              {canManage && (
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={startEditingName}
+                  style={{ fontSize: 11, padding: "4px 8px" }}
+                >
+                  {isOwner ? "rename" : "rename (admin)"}
+                </button>
+              )}
+            </h1>
+          )}
           <p className="channel-subs" style={{ marginBottom: 4 }}>
             @{channel.handle} · {subCount.toLocaleString()} subscribers
           </p>
