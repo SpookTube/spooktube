@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { Video } from "@/lib/types";
-import VcrCounter from "@/components/VcrCounter";
-import LikeButton from "@/components/LikeButton";
-import SubscribeButton from "@/components/SubscribeButton";
-import ShareButton from "@/components/ShareButton";
-import CommentSection from "@/components/CommentSection";
+import { supabase } from "../../lib/supabaseClient";
+import { Video } from "../../lib/types";
+import VcrCounter from "../../components/VcrCounter";
+import LikeButton from "../../components/LikeButton";
+import SubscribeButton from "../../components/SubscribeButton";
+import ShareButton from "../../components/ShareButton";
+import CommentSection from "../../components/CommentSection";
 import Link from "next/link";
 
 export default function WatchPage() {
