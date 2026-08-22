@@ -2,27 +2,37 @@
 
 import { useState } from "react";
 
-export default function ShareButton({ title }: { title: string }) {
+interface ShareButtonProps {
+  title: string;
+  getVideoTime?: () => number;
+}
+
+export default function ShareButton({ title, getVideoTime }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
+  const [includeTime, setIncludeTime] = useState(false);
 
   const handleShare = async () => {
+    let url = window.location.href.split("?")[0];
+    if (includeTime && getVideoTime) {
+      const time = Math.floor(getVideoTime());
+      if (time > 0) url += `?t=${time}`;
+    }
+
     const shareData = {
       title: `Watch ${title} on SpookTube!`,
       text: `Check out this clip on SpookTube: ${title}`,
-      url: window.location.href,
+      url,
     };
 
-    // Use Web Share API if supported (mobile devices / modern browsers)
     if (navigator.share) {
       try {
         await navigator.share(shareData);
       } catch (err) {
-        // User cancelled or share failed silently
+        // Share cancelled
       }
     } else {
-      // Fallback: Copy link to clipboard
       try {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(url);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (err) {
@@ -32,12 +42,21 @@ export default function ShareButton({ title }: { title: string }) {
   };
 
   return (
-    <button
-      onClick={handleShare}
-      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white font-mono text-sm rounded flex items-center gap-2 transition-all active:scale-95"
-    >
-      <span>🔗</span>
-      <span>{copied ? "COPIED LINK!" : "SHARE"}</span>
-    </button>
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <button type="button" className="btn" onClick={handleShare}>
+        {copied ? "copied!" : "share"}
+      </button>
+
+      {getVideoTime && (
+        <label style={{ fontSize: 12, color: "#888", cursor: "pointer", display: "flex", gap: 4, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={includeTime}
+            onChange={(e) => setIncludeTime(e.target.checked)}
+          />
+          at current time
+        </label>
+      )}
+    </div>
   );
 }
