@@ -22,7 +22,7 @@ export default function WatchPage() {
 
       const { data, error } = await supabase
         .from("videos")
-        .select("*, channel:channels(*)")
+        .select("*, channels:channels(*)")
         .eq("id", id)
         .single();
 
@@ -84,40 +84,27 @@ export default function WatchPage() {
         {/* Channel Info & Video Stats Row */}
         <div className="flex items-center justify-between border-t border-amber-900/40 pt-3">
           <div className="flex items-center gap-4">
-            {/* 
-              Note: The alias `channel:channels(*)` in the Supabase query 
-              maps the joined table data to a property named `channel`. 
-              We use `@ts-ignore` here because the generated `Video` type 
-              might not reflect this alias dynamically.
-            */}
-            {/* @ts-ignore */}
-            <Link href={`/channel/${video.channel?.handle}`}>
+            <Link href={`/channel/${video.channels?.handle}`}>
               <div className="flex items-center gap-3 group">
                 <div className="w-10 h-10 rounded-full border border-amber-500/50 overflow-hidden bg-zinc-900">
-                  {/* @ts-ignore */}
-                  {video.channel?.avatar_url ? (
+                  {video.channels?.avatar_url ? (
                     <img
-                      // @ts-ignore
-                      src={video.channel.avatar_url}
-                      // @ts-ignore
-                      alt={video.channel.name}
+                      src={video.channels.avatar_url}
+                      alt={video.channels.name}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-amber-500 font-bold">
-                      {/* @ts-ignore */}
-                      {video.channel?.name?.[0]?.toUpperCase() || "?"}
+                      {video.channels?.name?.[0]?.toUpperCase() || "?"}
                     </div>
                   )}
                 </div>
                 <div>
                   <h3 className="font-semibold text-amber-400 group-hover:underline">
-                    {/* @ts-ignore */}
-                    {video.channel?.name}
+                    {video.channels?.name}
                   </h3>
                   <p className="text-xs text-amber-500/70">
-                    {/* @ts-ignore */}
-                    {video.channel?.subscriber_count || 0} subscribers
+                    {video.channels?.subscriber_count || 0} subscribers
                   </p>
                 </div>
               </div>
