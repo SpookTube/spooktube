@@ -6,6 +6,8 @@ import { supabase } from "../lib/supabaseClient";
 interface CommentSectionProps {
   videoId: string;
   user: any;
+  channelOwnerId?: string;
+  isAdmin?: boolean;
   onJumpToTime?: (seconds: number) => void;
 }
 
@@ -62,13 +64,18 @@ function renderCommentWithTimestamps(
 export default function CommentSection({
   videoId,
   user,
+  channelOwnerId,
+  isAdmin,
   onJumpToTime,
 }: CommentSectionProps) {
   const [comments, setComments] = useState<any[]>([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchComments() {
       const { data: rawComments, error } = await supabase
         .from("comments")
@@ -77,70 +84,91 @@ export default function CommentSection({
         .order("created_at", { ascending: false });
 
       if (error || !rawComments) {
-        setComments([]);
-        setLoading(false);
+        if (!cancelled) {
+          setComments([]);
+          setLoading(false);
+        }
         return;
       }
 
-      const channelIds = Array.from(
-        new Set(rawComments.map((c) => c.channel_id).filter(Boolean))
-      );
+      // Comments are tied to the commenter's user_id, not a channel — look
+      // up whichever channel (if any) each commenter owns, so we can show
+      // their channel name/avatar instead of a raw user id.
+      const userIds = Array.from(new Set(rawComments.map((c) => c.user_id).filter(Boolean)));
 
-      let channelMap: Record<string, any> = {};
-      if (channelIds.length > 0) {
+      let channelByUser: Record<string, any> = {};
+      if (userIds.length > 0) {
         const { data: channelsData } = await supabase
           .from("channels")
-          .select("id, name, avatar_url")
-          .in("id", channelIds);
+          .select("owner_id, name, avatar_url")
+          .in("owner_id", userIds);
 
         if (channelsData) {
-          channelMap = Object.fromEntries(channelsData.map((ch) => [ch.id, ch]));
+          for (const ch of channelsData) {
+            // if a user owns more than one channel, first match wins
+            if (!channelByUser[ch.owner_id]) channelByUser[ch.owner_id] = ch;
+          }
         }
       }
 
       const formatted = rawComments.map((c) => ({
         ...c,
-        channels: channelMap[c.channel_id] || null,
+        author: channelByUser[c.user_id] || null,
       }));
 
-      setComments(formatted);
-      setLoading(false);
+      if (!cancelled) {
+        setComments(formatted);
+        setLoading(false);
+      }
     }
 
     fetchComments();
+    return () => {
+      cancelled = true;
+    };
   }, [videoId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim() || !user) return;
 
-    const { data: channel } = await supabase
-      .from("channels")
-      .select("id, name, avatar_url")
-      .eq("owner_id", user.id)
-      .limit(1)
-      .maybeSingle();
-
-    if (!channel) return;
-
     const { data, error } = await supabase
       .from("comments")
       .insert({
         video_id: videoId,
-        channel_id: channel.id,
-        content: text.trim(),
+        user_id: user.id,
+        body: text.trim(),
       })
       .select("*")
       .single();
 
     if (!error && data) {
-      const newComment = {
-        ...data,
-        channels: channel,
-      };
-      setComments([newComment, ...comments]);
+      // Reuse author info from an earlier comment by this same user if we
+      // already have it loaded, so it doesn't flash "Anonymous" briefly.
+      const existingAuthor = comments.find((c) => c.user_id === user.id)?.author ?? null;
+      setComments([{ ...data, author: existingAuthor }, ...comments]);
       setText("");
     }
+  }
+
+  async function handleDelete(commentId: string) {
+    if (!window.confirm("Delete this comment?")) return;
+    setDeletingId(commentId);
+
+    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+
+    setDeletingId(null);
+    if (!error) {
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+    }
+  }
+
+  function canDelete(comment: any) {
+    if (!user) return false;
+    if (comment.user_id === user.id) return true; // own comment
+    if (channelOwnerId && user.id === channelOwnerId) return true; // video owner
+    if (isAdmin) return true; // admin
+    return false;
   }
 
   return (
@@ -188,21 +216,40 @@ export default function CommentSection({
                   overflow: "hidden",
                 }}
               >
-                {c.channels?.avatar_url ? (
+                {c.author?.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={c.channels.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src={c.author.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
-                  c.channels?.name?.[0]?.toUpperCase() ?? "?"
+                  c.author?.name?.[0]?.toUpperCase() ?? "?"
                 )}
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 13, color: "#888", margin: 0, fontWeight: 600 }}>
-                  {c.channels?.name ?? "Anonymous"}
+                  {c.author?.name ?? "Anonymous"}
                 </p>
                 <p style={{ fontSize: 14, color: "#eee", margin: "4px 0 0 0", lineHeight: 1.4 }}>
-                  {renderCommentWithTimestamps(c.content, onJumpToTime)}
+                  {renderCommentWithTimestamps(c.body, onJumpToTime)}
                 </p>
               </div>
+              {canDelete(c) && (
+                <button
+                  type="button"
+                  onClick={() => handleDelete(c.id)}
+                  disabled={deletingId === c.id}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#c0392b",
+                    fontSize: 11,
+                    fontFamily: "var(--font-mono)",
+                    cursor: "pointer",
+                    padding: "4px 6px",
+                    flexShrink: 0,
+                  }}
+                >
+                  {deletingId === c.id ? "..." : "delete"}
+                </button>
+              )}
             </div>
           ))}
         </div>

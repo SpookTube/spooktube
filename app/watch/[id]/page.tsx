@@ -161,7 +161,12 @@ export default function WatchPage({ params }: { params: { id: string } }) {
 
         {video.description && <div className="desc-box">{video.description}</div>}
 
-        <CommentSection videoId={video.id} user={user} />
+        <CommentSection
+          videoId={video.id}
+          user={user}
+          channelOwnerId={channel.owner_id}
+          isAdmin={isAdmin}
+        />
       </div>
     </div>
   );
