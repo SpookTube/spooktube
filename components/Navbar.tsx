@@ -1,49 +1,44 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useUser } from "../lib/useUser";
 import { supabase } from "../lib/supabaseClient";
-import SettingsModal from "./SettingsModal";
 
 export default function Navbar() {
   const { user } = useUser();
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
-  const handleSearch = (e: React.FormEvent) => {
+  function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
+    router.push(`/?q=${encodeURIComponent(query)}`);
+  }
 
-  const handleSignOut = async () => {
+  async function handleSignOut() {
     await supabase.auth.signOut();
-    window.location.href = "/";
-  };
+    router.push("/");
+    router.refresh();
+  }
 
   return (
-    <>
-      <header className="navbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px" }}>
-        <div className="nav-left" style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1 }}>
-          <Link href="/" className="logo-brand" style={{ whiteSpace: "nowrap" }}>
-            <span className="dot">●</span> SPÖÖK <span className="tag">TUBE</span>
-          </Link>
-          <form onSubmit={handleSearch} className="search-form" style={{ margin: 0 }}>
-            <input
-              type="text"
-              className="input search-input"
-              placeholder="search clips..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
-        </div>
+    <div className="navbar">
+      <div className="navbar-inner">
+        <Link href="/" className="logo">
+          <span className="logo-word">SPÖÖK</span>
+          <span className="logo-pill">TUBE</span>
+        </Link>
 
-        <div className="nav-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <form className="nav-search" onSubmit={handleSearch}>
+          <input
+            placeholder="search clips..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </form>
+
+        <div className="nav-actions">
           {user ? (
             <>
               <Link href="/upload" className="btn btn-primary">
@@ -52,30 +47,22 @@ export default function Navbar() {
               <Link href="/my-channels" className="btn">
                 My Channels
               </Link>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => setIsSettingsOpen(true)}
-                title="Settings"
-              >
-                ⚙️
-              </button>
-              <button type="button" className="btn" onClick={handleSignOut}>
+              <button className="btn btn-ghost" onClick={handleSignOut}>
                 Sign out
               </button>
             </>
           ) : (
-            <Link href="/login" className="btn">
-              Sign in
-            </Link>
+            <>
+              <Link href="/login" className="btn">
+                Sign in
+              </Link>
+              <Link href="/signup" className="btn btn-primary">
+                Sign up
+              </Link>
+            </>
           )}
         </div>
-      </header>
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
-    </>
+      </div>
+    </div>
   );
 }
