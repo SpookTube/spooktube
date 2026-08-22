@@ -1,135 +1,167 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { Video } from "@/lib/types";
-import VcrCounter from "@/components/VcrCounter";
-import LikeButton from "@/components/LikeButton";
-import SubscribeButton from "@/components/SubscribeButton";
-import ShareButton from "@/components/ShareButton";
-import CommentSection from "@/components/CommentSection";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "../../../lib/supabaseClient";
+import { useUser } from "../../../lib/useUser";
+import { useIsAdmin } from "../../../lib/useIsAdmin";
+import { getAnonViewerId } from "../../../lib/viewerId";
+import type { Video, Channel } from "../../../lib/types";
+import ContentWarningBadge from "../../../components/ContentWarningBadge";
+import VcrCounter from "../../../components/VcrCounter";
+import LikeButton from "../../../components/LikeButton";
+import SubscribeButton from "../../../components/SubscribeButton";
+import CommentSection from "../../../components/CommentSection";
+import ShareButton from "../../../components/ShareButton";
 
-export default function WatchPage() {
-  const { id } = useParams();
+export default function WatchPage({ params }: { params: { id: string } }) {
+  const videoId = params.id;
+  const { user, loading: userLoading } = useUser();
+  const { isAdmin } = useIsAdmin(user);
+  const router = useRouter();
+
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [video, setVideo] = useState<Video | null>(null);
+  const [channel, setChannel] = useState<Channel | null>(null);
+  const [viewCount, setViewCount] = useState(0);
+  const [likeCount, setLikeCount] = useState(0);
+  const [subCount, setSubCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchVideo() {
-      if (!id) return;
+    let cancelled = false;
 
-      const { data, error } = await supabase
+    async function load() {
+      const { data: v } = await supabase
         .from("videos")
-        .select("*, channels:channels(*)")
-        .eq("id", id)
+        .select("*, channels(*)")
+        .eq("id", videoId)
         .single();
 
-      if (error) {
-        console.error("Error fetching video:", error);
-      } else {
-        setVideo(data);
-        
-        // Increment view count
-        await supabase
-          .from("videos")
-          .update({ views_count: (data.views_count || 0) + 1 })
-          .eq("id", id);
+      if (!v || cancelled) {
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      setVideo(v);
+      setChannel(v.channels);
+
+      const [{ data: stats }, { data: chStats }] = await Promise.all([
+        supabase.from("video_stats").select("*").eq("video_id", videoId).maybeSingle(),
+        supabase.from("channel_stats").select("*").eq("channel_id", v.channel_id).maybeSingle(),
+      ]);
+
+      if (!cancelled) {
+        setViewCount(stats?.view_count ?? 0);
+        setLikeCount(stats?.like_count ?? 0);
+        setSubCount(chStats?.subscriber_count ?? 0);
+        setLoading(false);
+      }
     }
 
-    fetchVideo();
-  }, [id]);
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [videoId]);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <p className="text-amber-500 animate-pulse font-mono">LOADING VIDEO...</p>
-      </div>
-    );
+  useEffect(() => {
+    if (userLoading) return;
+    const viewerId = user?.id ?? getAnonViewerId();
+
+    supabase
+      .from("video_views")
+      .insert({ video_id: videoId, viewer_id: viewerId })
+      .then(({ error }) => {
+        if (!error) setViewCount((c) => c + 1);
+      });
+  }, [videoId, user, userLoading]);
+
+  const isOwner = !!user && !!channel && user.id === channel.owner_id;
+  const canDelete = isOwner || isAdmin;
+
+  async function handleDelete() {
+    if (!video || !channel) return;
+    if (!window.confirm("Delete this clip for good? This can't be undone.")) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    const { error } = await supabase.from("videos").delete().eq("id", video.id);
+
+    if (error) {
+      setDeleting(false);
+      setDeleteError(error.message);
+      return;
+    }
+
+    router.push(`/channel/${channel.handle}`);
   }
 
-  if (!video) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <p className="text-red-500 font-mono">VIDEO NOT FOUND</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="page empty">loading tape...</div>;
+  if (!video || !channel) return <div className="page empty">this clip doesn't exist (or got taped over).</div>;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
-      {/* Video Player */}
-      <div className="relative aspect-video w-full bg-black border-2 border-amber-900/50 rounded-lg overflow-hidden shadow-2xl mb-4">
-        <video
-          src={video.video_url}
-          controls
-          autoPlay
-          className="w-full h-full object-contain"
-        />
-      </div>
+    <div className="watch-layout">
+      <div>
+        <div className="player-shell">
+          <video
+            ref={videoRef}
+            src={video.video_url}
+            controls
+            autoPlay
+          />
+        </div>
 
-      {/* Header Info Block */}
-      <div className="flex flex-col gap-3">
-        {/* Title & Share Button Header */}
-        <div className="flex items-center justify-between w-full">
-          <h1 className="text-2xl font-bold text-amber-500 tracking-wider">
-            {video.title}
-          </h1>
+        <div className="watch-header-row">
+          <h1 className="watch-title">{video.title}</h1>
           <ShareButton />
         </div>
 
-        {/* Channel Info & Video Stats Row */}
-        <div className="flex items-center justify-between border-t border-amber-900/40 pt-3">
-          <div className="flex items-center gap-4">
-            <Link href={`/channel/${video.channels?.handle}`}>
-              <div className="flex items-center gap-3 group">
-                <div className="w-10 h-10 rounded-full border border-amber-500/50 overflow-hidden bg-zinc-900">
-                  {video.channels?.avatar_url ? (
-                    <img
-                      src={video.channels.avatar_url}
-                      alt={video.channels.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-amber-500 font-bold">
-                      {video.channels?.name?.[0]?.toUpperCase() || "?"}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-amber-400 group-hover:underline">
-                    {video.channels?.name}
-                  </h3>
-                  <p className="text-xs text-amber-500/70">
-                    {video.channels?.subscriber_count || 0} subscribers
-                  </p>
-                </div>
-              </div>
-            </Link>
-            <SubscribeButton channelId={video.channel_id} />
-          </div>
+        <div className="watch-row">
+          <Link href={`/channel/${channel.handle}`} className="channel-chip">
+            <div className="channel-avatar">
+              {channel.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={channel.avatar_url} alt="" />
+              ) : (
+                channel.name[0]?.toUpperCase()
+              )}
+            </div>
+            <div>
+              <p className="channel-name">{channel.name}</p>
+              <p className="channel-subs">{subCount.toLocaleString()} subscribers</p>
+            </div>
+          </Link>
 
-          {/* Views & Likes */}
-          <div className="flex items-center gap-4">
-            <VcrCounter count={video.views_count} label="views" />
-            <LikeButton videoId={video.id} initialLikes={video.likes_count} />
+          <div className="action-cluster">
+            <VcrCounter value={viewCount} label="views" />
+            <LikeButton videoId={video.id} user={user} initialCount={likeCount} />
+            <SubscribeButton channelId={channel.id} ownerId={channel.owner_id} user={user} />
           </div>
         </div>
 
-        {/* Description */}
-        {video.description && (
-          <div className="mt-2 p-4 bg-zinc-900/80 border border-amber-900/30 rounded-md text-amber-200/80 text-sm whitespace-pre-wrap">
-            {video.description}
-          </div>
-        )}
-      </div>
+        <div className="warning-row">
+          <ContentWarningBadge text={video.content_warning} />
+          {canDelete && (
+            <button
+              className="btn btn-delete"
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "deleting..." : isOwner ? "delete this clip" : "delete this clip (admin)"}
+            </button>
+          )}
+        </div>
+        {deleteError && <p className="error-text">{deleteError}</p>}
 
-      {/* Comments Section */}
-      <div className="mt-8 border-t border-amber-900/40 pt-6">
-        <CommentSection videoId={video.id} />
+        {video.description && <div className="desc-box">{video.description}</div>}
+
+        <CommentSection videoId={video.id} user={user} />
       </div>
     </div>
   );

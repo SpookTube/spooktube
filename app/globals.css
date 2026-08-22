@@ -427,10 +427,18 @@ button {
   display: block;
 }
 
+.watch-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 18px 0 8px;
+}
+
 .watch-title {
   font-size: 20px;
   font-weight: 700;
-  margin: 18px 0 8px;
+  margin: 0;
 }
 
 .watch-row {
