@@ -1,44 +1,30 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Link from "next/link";
 import { useUser } from "../lib/useUser";
 import { supabase } from "../lib/supabaseClient";
+import SettingsModal from "./SettingsModal";
 
 export default function Navbar() {
   const { user } = useUser();
-  const router = useRouter();
-  const [query, setQuery] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    router.push(`/?q=${encodeURIComponent(query)}`);
-  }
-
-  async function handleSignOut() {
+  const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
-  }
+    window.location.href = "/";
+  };
 
   return (
-    <div className="navbar">
-      <div className="navbar-inner">
-        <Link href="/" className="logo">
-          <span className="logo-word">SPÖÖK</span>
-          <span className="logo-pill">TUBE</span>
-        </Link>
+    <>
+      <header className="navbar">
+        <div className="nav-left">
+          <Link href="/" className="logo-brand">
+            <span className="dot">●</span> SPÖÖK <span className="tag">TUBE</span>
+          </Link>
+        </div>
 
-        <form className="nav-search" onSubmit={handleSearch}>
-          <input
-            placeholder="search clips..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </form>
-
-        <div className="nav-actions">
+        <div className="nav-right" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {user ? (
             <>
               <Link href="/upload" className="btn btn-primary">
@@ -47,22 +33,33 @@ export default function Navbar() {
               <Link href="/my-channels" className="btn">
                 My Channels
               </Link>
-              <button className="btn btn-ghost" onClick={handleSignOut}>
+              
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setIsSettingsOpen(true)}
+                title="Settings"
+                style={{ padding: "6px 10px" }}
+              >
+                ⚙️
+              </button>
+
+              <button type="button" className="btn" onClick={handleSignOut}>
                 Sign out
               </button>
             </>
           ) : (
-            <>
-              <Link href="/login" className="btn">
-                Sign in
-              </Link>
-              <Link href="/signup" className="btn btn-primary">
-                Sign up
-              </Link>
-            </>
+            <Link href="/login" className="btn">
+              Sign in
+            </Link>
           )}
         </div>
-      </div>
-    </div>
+      </header>
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
+    </>
   );
 }

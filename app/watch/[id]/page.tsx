@@ -14,7 +14,6 @@ import LikeButton from "../../../components/LikeButton";
 import SubscribeButton from "../../../components/SubscribeButton";
 import CommentSection from "../../../components/CommentSection";
 import ShareButton from "../../../components/ShareButton";
-import SettingsModal from "../../../components/SettingsModal";
 
 export default function WatchPage({ params }: { params: { id: string } }) {
   const { user, loading: userLoading } = useUser();
@@ -32,10 +31,8 @@ export default function WatchPage({ params }: { params: { id: string } }) {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Feature States
-  const [isLooping, setIsLooping] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [theaterEnabled, setTheaterEnabled] = useState(false);
+  // Checkbox state for share timestamp
+  const [includeTime, setIncludeTime] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +91,13 @@ export default function WatchPage({ params }: { params: { id: string } }) {
     }
   }, [searchParams, loading]);
 
+  const jumpToTime = (seconds: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = seconds;
+      videoRef.current.play();
+    }
+  };
+
   const isOwner = !!user && !!channel && user.id === channel.owner_id;
   const canDelete = isOwner || isAdmin;
 
@@ -119,42 +123,39 @@ export default function WatchPage({ params }: { params: { id: string } }) {
   if (!video || !channel) return <div className="page empty">this clip doesn't exist (or got taped over).</div>;
 
   return (
-    <div
-      className="watch-layout"
-      style={{
-        backgroundColor: theaterEnabled ? "#000" : undefined,
-        transition: "background-color 0.3s ease",
-      }}
-    >
+    <div className="watch-layout">
       <div>
-        <div
-          className="player-shell"
-          style={{
-            position: "relative",
-            overflow: "hidden",
-            boxShadow: theaterEnabled ? "0 0 50px rgba(0,0,0,0.9)" : undefined,
-          }}
-        >
+        <div className="player-shell" style={{ position: "relative", overflow: "hidden" }}>
           <video
             ref={videoRef}
             src={video.video_url}
             controls
             autoPlay
-            loop={isLooping}
           />
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+        {/* Title row with checkbox + share right aligned */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
           <h1 className="watch-title" style={{ margin: 0 }}>{video.title}</h1>
-          <button
-            className="btn"
-            onClick={() => setIsSettingsOpen(true)}
-          >
-            ⚙️ Settings
-          </button>
+          
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label style={{ fontSize: 13, color: "#888", cursor: "pointer", display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={includeTime}
+                onChange={(e) => setIncludeTime(e.target.checked)}
+              />
+              at current time
+            </label>
+            <ShareButton
+              title={video.title}
+              getVideoTime={includeTime ? () => videoRef.current?.currentTime || 0 : undefined}
+            />
+          </div>
         </div>
 
-        <div className="watch-row">
+        {/* Channel & Stats cluster */}
+        <div className="watch-row" style={{ marginTop: 12 }}>
           <Link href={`/channel/${channel.handle}`} className="channel-chip">
             <div className="channel-avatar">
               {channel.avatar_url ? (
@@ -170,33 +171,14 @@ export default function WatchPage({ params }: { params: { id: string } }) {
             </div>
           </Link>
 
-          <div className="action-cluster">
+          <div className="action-cluster" style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <VcrCounter value={viewCount} label="views" />
-            
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setIsLooping(!isLooping)}
-              style={{
-                borderColor: isLooping ? "#ff4444" : undefined,
-                color: isLooping ? "#ff4444" : undefined,
-              }}
-            >
-              🔁 {isLooping ? "looping" : "loop"}
-            </button>
-
             <LikeButton videoId={video.id} user={user} initialCount={likeCount} />
-            
-            <ShareButton
-              title={video.title}
-              getVideoTime={() => videoRef.current?.currentTime || 0}
-            />
-
             <SubscribeButton channelId={channel.id} ownerId={channel.owner_id} user={user} />
           </div>
         </div>
 
-        <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ margin: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
           <ContentWarningBadge text={video.content_warning} />
           {canDelete && (
             <button
@@ -214,15 +196,8 @@ export default function WatchPage({ params }: { params: { id: string } }) {
 
         {video.description && <div className="desc-box">{video.description}</div>}
 
-        <CommentSection videoId={video.id} user={user} />
+        <CommentSection videoId={video.id} user={user} onJumpToTime={jumpToTime} />
       </div>
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        theaterEnabled={theaterEnabled}
-        setTheaterEnabled={setTheaterEnabled}
-      />
     </div>
   );
 }
