@@ -13,6 +13,7 @@ import VcrCounter from "../../../components/VcrCounter";
 import LikeButton from "../../../components/LikeButton";
 import SubscribeButton from "../../../components/SubscribeButton";
 import CommentSection from "../../../components/CommentSection";
+import ShareButton from "../../../components/ShareButton";
 
 export default function WatchPage({ params }: { params: { id: string } }) {
   const { user, loading: userLoading } = useUser();
@@ -131,6 +132,7 @@ export default function WatchPage({ params }: { params: { id: string } }) {
           <div className="action-cluster">
             <VcrCounter value={viewCount} label="views" />
             <LikeButton videoId={video.id} user={user} initialCount={likeCount} />
+            <ShareButton title={video.title} />
             <SubscribeButton channelId={channel.id} ownerId={channel.owner_id} user={user} />
           </div>
         </div>
