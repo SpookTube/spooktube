@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { useUser } from "../../../lib/useUser";
 import { useIsAdmin } from "../../../lib/useIsAdmin";
@@ -14,11 +14,15 @@ import LikeButton from "../../../components/LikeButton";
 import SubscribeButton from "../../../components/SubscribeButton";
 import CommentSection from "../../../components/CommentSection";
 import ShareButton from "../../../components/ShareButton";
+import SettingsModal from "../../../components/SettingsModal";
 
 export default function WatchPage({ params }: { params: { id: string } }) {
   const { user, loading: userLoading } = useUser();
   const { isAdmin } = useIsAdmin(user);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [video, setVideo] = useState<Video | null>(null);
   const [channel, setChannel] = useState<Channel | null>(null);
   const [viewCount, setViewCount] = useState(0);
@@ -27,6 +31,11 @@ export default function WatchPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Feature States
+  const [isLooping, setIsLooping] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [theaterEnabled, setTheaterEnabled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,9 +74,6 @@ export default function WatchPage({ params }: { params: { id: string } }) {
     };
   }, [params.id]);
 
-  // Record a view once per viewer (logged-in id, or a stable anon id). The
-  // video_views table's primary key silently rejects duplicates, so re-visits
-  // don't inflate the count.
   useEffect(() => {
     if (userLoading) return;
     const viewerId = user?.id ?? getAnonViewerId();
@@ -79,6 +85,14 @@ export default function WatchPage({ params }: { params: { id: string } }) {
         if (!error) setViewCount((c) => c + 1);
       });
   }, [params.id, user, userLoading]);
+
+  // Auto-jump to time parameter if passed in URL (?t=15)
+  useEffect(() => {
+    const t = searchParams.get("t");
+    if (t && videoRef.current) {
+      videoRef.current.currentTime = parseFloat(t);
+    }
+  }, [searchParams, loading]);
 
   const isOwner = !!user && !!channel && user.id === channel.owner_id;
   const canDelete = isOwner || isAdmin;
@@ -105,13 +119,40 @@ export default function WatchPage({ params }: { params: { id: string } }) {
   if (!video || !channel) return <div className="page empty">this clip doesn't exist (or got taped over).</div>;
 
   return (
-    <div className="watch-layout">
+    <div
+      className="watch-layout"
+      style={{
+        backgroundColor: theaterEnabled ? "#000" : undefined,
+        transition: "background-color 0.3s ease",
+      }}
+    >
       <div>
-        <div className="player-shell">
-          <video src={video.video_url} controls autoPlay />
+        <div
+          className="player-shell"
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            boxShadow: theaterEnabled ? "0 0 50px rgba(0,0,0,0.9)" : undefined,
+          }}
+        >
+          <video
+            ref={videoRef}
+            src={video.video_url}
+            controls
+            autoPlay
+            loop={isLooping}
+          />
         </div>
 
-        <h1 className="watch-title">{video.title}</h1>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+          <h1 className="watch-title" style={{ margin: 0 }}>{video.title}</h1>
+          <button
+            className="btn"
+            onClick={() => setIsSettingsOpen(true)}
+          >
+            ⚙️ Settings
+          </button>
+        </div>
 
         <div className="watch-row">
           <Link href={`/channel/${channel.handle}`} className="channel-chip">
@@ -131,8 +172,26 @@ export default function WatchPage({ params }: { params: { id: string } }) {
 
           <div className="action-cluster">
             <VcrCounter value={viewCount} label="views" />
+            
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setIsLooping(!isLooping)}
+              style={{
+                borderColor: isLooping ? "#ff4444" : undefined,
+                color: isLooping ? "#ff4444" : undefined,
+              }}
+            >
+              🔁 {isLooping ? "looping" : "loop"}
+            </button>
+
             <LikeButton videoId={video.id} user={user} initialCount={likeCount} />
-            <ShareButton title={video.title} />
+            
+            <ShareButton
+              title={video.title}
+              getVideoTime={() => videoRef.current?.currentTime || 0}
+            />
+
             <SubscribeButton channelId={channel.id} ownerId={channel.owner_id} user={user} />
           </div>
         </div>
@@ -157,6 +216,13 @@ export default function WatchPage({ params }: { params: { id: string } }) {
 
         <CommentSection videoId={video.id} user={user} />
       </div>
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        theaterEnabled={theaterEnabled}
+        setTheaterEnabled={setTheaterEnabled}
+      />
     </div>
   );
 }
