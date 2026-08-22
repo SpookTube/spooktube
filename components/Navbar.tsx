@@ -27,12 +27,12 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="navbar">
-        <div className="nav-left">
-          <Link href="/" className="logo-brand">
+      <header className="navbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px" }}>
+        <div className="nav-left" style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1 }}>
+          <Link href="/" className="logo-brand" style={{ whiteSpace: "nowrap" }}>
             <span className="dot">●</span> SPÖÖK <span className="tag">TUBE</span>
           </Link>
-          <form onSubmit={handleSearch} className="search-form">
+          <form onSubmit={handleSearch} className="search-form" style={{ margin: 0 }}>
             <input
               type="text"
               className="input search-input"
@@ -43,7 +43,7 @@ export default function Navbar() {
           </form>
         </div>
 
-        <div className="nav-right">
+        <div className="nav-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           {user ? (
             <>
               <Link href="/upload" className="btn btn-primary">
