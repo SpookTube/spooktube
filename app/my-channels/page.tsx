@@ -108,47 +108,57 @@ export default function MyChannelsPage() {
       </div>
 
       {showCreate && (
-        <div className="panel" style={{ maxWidth: 460, marginTop: 26 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2 style={{ fontSize: 15, margin: 0 }}>Start a new channel</h2>
-            {channels.length > 0 && (
-              <button
-                type="button"
-                className="btn"
-                style={{ padding: "4px 10px", fontSize: 11 }}
-                onClick={() => {
-                  setShowCreate(false);
-                  setError(null);
-                }}
-              >
-                cancel
+        <div
+          className="modal-backdrop"
+          onClick={() => {
+            if (channels.length > 0) {
+              setShowCreate(false);
+              setError(null);
+            }
+          }}
+        >
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: 15, margin: 0 }}>Start a new channel</h2>
+              {channels.length > 0 && (
+                <button
+                  type="button"
+                  className="modal-close"
+                  aria-label="Close"
+                  onClick={() => {
+                    setShowCreate(false);
+                    setError(null);
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <form onSubmit={handleCreate}>
+              <div className="field">
+                <label>Channel name</label>
+                <input required value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="field">
+                <label>Handle</label>
+                <input
+                  required
+                  placeholder="e.g. crawlspace-clips"
+                  value={handle}
+                  onChange={(e) => setHandle(e.target.value)}
+                />
+                <p className="hint">Your channel page will live at /channel/{handle || "your-handle"}</p>
+              </div>
+              <div className="field">
+                <label>Description</label>
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+              {error && <p className="error-text">{error}</p>}
+              <button className="btn btn-primary" type="submit" disabled={creating}>
+                {creating ? "creating..." : "Create channel"}
               </button>
-            )}
+            </form>
           </div>
-          <form onSubmit={handleCreate} style={{ marginTop: 16 }}>
-            <div className="field">
-              <label>Channel name</label>
-              <input required value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="field">
-              <label>Handle</label>
-              <input
-                required
-                placeholder="e.g. crawlspace-clips"
-                value={handle}
-                onChange={(e) => setHandle(e.target.value)}
-              />
-              <p className="hint">Your channel page will live at /channel/{handle || "your-handle"}</p>
-            </div>
-            <div className="field">
-              <label>Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
-            </div>
-            {error && <p className="error-text">{error}</p>}
-            <button className="btn btn-primary" type="submit" disabled={creating}>
-              {creating ? "creating..." : "Create channel"}
-            </button>
-          </form>
         </div>
       )}
     </div>

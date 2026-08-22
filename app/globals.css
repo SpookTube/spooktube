@@ -898,6 +898,51 @@ button {
   border-bottom-color: var(--warning-red);
 }
 
+/* ---------- modal ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.modal-panel {
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--static);
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.modal-close:hover {
+  color: var(--bone);
+}
+
 /* ---------- empty states ---------- */
 
 .empty {
@@ -913,6 +958,107 @@ button {
 @media (min-width: 900px) {
   .watch-layout {
     grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+/* ---------- mobile navbar ---------- */
+
+.navbar-hamburger {
+  display: none;
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--bone);
+  font-size: 16px;
+  padding: 7px 11px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.mobile-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 6px 20px 18px;
+  border-top: 1px solid var(--hairline);
+}
+
+.mobile-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-menu-actions .btn {
+  width: 100%;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .nav-search,
+  .nav-actions {
+    display: none;
+  }
+
+  .navbar-hamburger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .navbar-inner {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .shell,
+  .page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .page {
+    padding-top: 20px;
+  }
+
+  .channel-hero {
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 22px 0 16px;
+  }
+
+  .channel-hero .channel-avatar {
+    width: 60px;
+    height: 60px;
+    font-size: 21px;
+  }
+
+  .channel-hero h1 {
+    font-size: 19px;
+  }
+
+  .watch-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .watch-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .action-cluster {
+    flex-wrap: wrap;
+  }
+
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+
+  .player-shell video {
+    max-height: 42vh;
   }
 }
 
