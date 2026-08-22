@@ -3,15 +3,11 @@
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  theaterEnabled: boolean;
-  setTheaterEnabled: (v: boolean) => void;
 }
 
 export default function SettingsModal({
   isOpen,
   onClose,
-  theaterEnabled,
-  setTheaterEnabled,
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -45,14 +41,9 @@ export default function SettingsModal({
           ⚙️ Player Settings
         </h2>
 
-        <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-          <span>🎬 Theater Mode</span>
-          <input
-            type="checkbox"
-            checked={theaterEnabled}
-            onChange={(e) => setTheaterEnabled(e.target.checked)}
-          />
-        </label>
+        <p style={{ fontSize: 14, color: "#888", margin: 0 }}>
+          No additional settings available right now.
+        </p>
 
         <button className="btn" onClick={onClose} style={{ marginTop: 8 }}>
           Close
