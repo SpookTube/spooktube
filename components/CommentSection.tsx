@@ -9,7 +9,6 @@ interface CommentSectionProps {
   onJumpToTime?: (seconds: number) => void;
 }
 
-// Converts "0:15" or "1:23" into clickable timestamp buttons
 function renderCommentWithTimestamps(
   text: string,
   onJumpToTime?: (seconds: number) => void
@@ -70,13 +69,42 @@ export default function CommentSection({
 
   useEffect(() => {
     async function fetchComments() {
-      const { data } = await supabase
+      // Fetch comments first
+      const { data: rawComments, error } = await supabase
         .from("comments")
-        .select("*, channels(name, avatar_url)")
+        .select("*")
         .eq("video_id", videoId)
         .order("created_at", { ascending: false });
 
-      setComments(data || []);
+      if (error || !rawComments) {
+        setComments([]);
+        setLoading(false);
+        return;
+      }
+
+      // Populate channel details for each comment
+      const channelIds = Array.from(
+        new Set(rawComments.map((c) => c.channel_id).filter(Boolean))
+      );
+
+      let channelMap: Record<string, any> = {};
+      if (channelIds.length > 0) {
+        const { data: channelsData } = await supabase
+          .from("channels")
+          .select("id, name, avatar_url")
+          .in("id", channelIds);
+
+        if (channelsData) {
+          channelMap = Object.fromEntries(channelsData.map((ch) => [ch.id, ch]));
+        }
+      }
+
+      const formatted = rawComments.map((c) => ({
+        ...c,
+        channels: channelMap[c.channel_id] || null,
+      }));
+
+      setComments(formatted);
       setLoading(false);
     }
 
@@ -87,7 +115,6 @@ export default function CommentSection({
     e.preventDefault();
     if (!text.trim() || !user) return;
 
-    // Fetch user's channel ID to associate comment
     const { data: channel } = await supabase
       .from("channels")
       .select("id, name, avatar_url")
@@ -103,11 +130,15 @@ export default function CommentSection({
         channel_id: channel.id,
         content: text.trim(),
       })
-      .select("*, channels(name, avatar_url)")
+      .select("*")
       .single();
 
     if (!error && data) {
-      setComments([data, ...comments]);
+      const newComment = {
+        ...data,
+        channels: channel,
+      };
+      setComments([newComment, ...comments]);
       setText("");
     }
   }
@@ -121,7 +152,7 @@ export default function CommentSection({
           <input
             type="text"
             className="input"
-            placeholder="Add a comment... (use timestamps like 0:15)"
+            placeholder="Add a comment..."
             value={text}
             onChange={(e) => setText(e.target.value)}
             style={{ flex: 1 }}
