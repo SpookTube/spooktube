@@ -3,7 +3,7 @@ import Navbar from "../components/Navbar";
 
 export const metadata = {
   title: "SpookTube",
-  description: "Content-warned horror clips, shared by the people who made them.",
+  description: "Upload Clips From the Horror game Content Warning!",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
