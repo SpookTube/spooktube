@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { useUser } from "../../../lib/useUser";
 import { useIsAdmin } from "../../../lib/useIsAdmin";
@@ -15,11 +15,11 @@ import SubscribeButton from "../../../components/SubscribeButton";
 import CommentSection from "../../../components/CommentSection";
 import ShareButton from "../../../components/ShareButton";
 
-function WatchContent({ videoId }: { videoId: string }) {
+export default function WatchPage({ params }: { params: { id: string } }) {
+  const videoId = params.id;
   const { user, loading: userLoading } = useUser();
   const { isAdmin } = useIsAdmin(user);
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [video, setVideo] = useState<Video | null>(null);
@@ -30,8 +30,6 @@ function WatchContent({ videoId }: { videoId: string }) {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const [includeTime, setIncludeTime] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,20 +80,6 @@ function WatchContent({ videoId }: { videoId: string }) {
       });
   }, [videoId, user, userLoading]);
 
-  useEffect(() => {
-    const t = searchParams.get("t");
-    if (t && videoRef.current) {
-      videoRef.current.currentTime = parseFloat(t);
-    }
-  }, [searchParams, loading]);
-
-  const jumpToTime = (seconds: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = seconds;
-      videoRef.current.play();
-    }
-  };
-
   const isOwner = !!user && !!channel && user.id === channel.owner_id;
   const canDelete = isOwner || isAdmin;
 
@@ -121,69 +105,53 @@ function WatchContent({ videoId }: { videoId: string }) {
   if (!video || !channel) return <div className="page empty">this clip doesn't exist (or got taped over).</div>;
 
   return (
-    <div className="watch-layout" style={{ maxWidth: 1100, margin: "0 auto", padding: "16px" }}>
+    <div className="watch-layout">
       <div>
-        <div className="player-shell" style={{ position: "relative", width: "100%", aspectRatio: "16/9", backgroundColor: "#000", borderRadius: 8, overflow: "hidden" }}>
+        <div className="player-shell">
           <video
             ref={videoRef}
             src={video.video_url}
             controls
             autoPlay
-            style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
-          <h1 className="watch-title" style={{ margin: 0, fontSize: 22 }}>{video.title}</h1>
-          
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <label style={{ fontSize: 13, color: "#888", cursor: "pointer", display: "flex", gap: 6, alignItems: "center" }}>
-              <input
-                type="checkbox"
-                checked={includeTime}
-                onChange={(e) => setIncludeTime(e.target.checked)}
-              />
-              at current time
-            </label>
-            <ShareButton
-              title={video.title}
-              getVideoTime={includeTime ? () => videoRef.current?.currentTime || 0 : undefined}
-            />
-          </div>
+        <div className="watch-header-row">
+          <h1 className="watch-title">{video.title}</h1>
+          <ShareButton />
         </div>
 
-        <div className="watch-row" style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #222", paddingBottom: 16 }}>
-          <Link href={`/channel/${channel.handle}`} className="channel-chip" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
-            <div className="channel-avatar" style={{ width: 40, height: 40, borderRadius: "50%", backgroundColor: "#333", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div className="watch-row">
+          <Link href={`/channel/${channel.handle}`} className="channel-chip">
+            <div className="channel-avatar">
               {channel.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={channel.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={channel.avatar_url} alt="" />
               ) : (
                 channel.name[0]?.toUpperCase()
               )}
             </div>
             <div>
-              <p className="channel-name" style={{ margin: 0, color: "#fff", fontWeight: 600 }}>{channel.name}</p>
-              <p className="channel-subs" style={{ margin: 0, fontSize: 12, color: "#888" }}>{subCount.toLocaleString()} subscribers</p>
+              <p className="channel-name">{channel.name}</p>
+              <p className="channel-subs">{subCount.toLocaleString()} subscribers</p>
             </div>
           </Link>
 
-          <div className="action-cluster" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="action-cluster">
             <VcrCounter value={viewCount} label="views" />
             <LikeButton videoId={video.id} user={user} initialCount={likeCount} />
             <SubscribeButton channelId={channel.id} ownerId={channel.owner_id} user={user} />
           </div>
         </div>
 
-        <div style={{ margin: "16px 0", display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="warning-row">
           <ContentWarningBadge text={video.content_warning} />
           {canDelete && (
             <button
-              className="btn"
+              className="btn btn-delete"
               type="button"
               onClick={handleDelete}
               disabled={deleting}
-              style={{ marginLeft: "auto", color: "#c0392b" }}
             >
               {deleting ? "deleting..." : isOwner ? "delete this clip" : "delete this clip (admin)"}
             </button>
@@ -191,22 +159,10 @@ function WatchContent({ videoId }: { videoId: string }) {
         </div>
         {deleteError && <p className="error-text">{deleteError}</p>}
 
-        {video.description && (
-          <div className="desc-box" style={{ background: "#111", padding: 14, borderRadius: 6, fontSize: 14, color: "#ccc", margin: "12px 0" }}>
-            {video.description}
-          </div>
-        )}
+        {video.description && <div className="desc-box">{video.description}</div>}
 
-        <CommentSection videoId={video.id} user={user} onJumpToTime={jumpToTime} />
+        <CommentSection videoId={video.id} user={user} />
       </div>
     </div>
-  );
-}
-
-export default function WatchPage({ params }: { params: { id: string } }) {
-  return (
-    <Suspense fallback={<div className="page empty">loading tape...</div>}>
-      <WatchContent videoId={params.id} />
-    </Suspense>
   );
 }
