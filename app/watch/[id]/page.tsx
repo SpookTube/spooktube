@@ -78,7 +78,7 @@ export default function WatchPage() {
           <h1 className="text-2xl font-bold text-amber-500 tracking-wider">
             {video.title}
           </h1>
-          <ShareButton videoId={video.id} title={video.title} />
+          <ShareButton />
         </div>
 
         {/* Channel Info & Video Stats Row */}
