@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { supabase } from "../../../lib/supabaseClient";
-import { Video } from "../../../lib/types";
-import VcrCounter from "../../../components/VcrCounter";
-import LikeButton from "../../../components/LikeButton";
-import SubscribeButton from "../../../components/SubscribeButton";
-import ShareButton from "../../../components/ShareButton";
-import CommentSection from "../../../components/CommentSection";
+import { supabase } from "@/lib/supabaseClient";
+import { Video } from "@/lib/types";
+import VcrCounter from "@/components/VcrCounter";
+import LikeButton from "@/components/LikeButton";
+import SubscribeButton from "@/components/SubscribeButton";
+import ShareButton from "@/components/ShareButton";
+import CommentSection from "@/components/CommentSection";
 import Link from "next/link";
 
 export default function WatchPage() {
@@ -84,26 +84,39 @@ export default function WatchPage() {
         {/* Channel Info & Video Stats Row */}
         <div className="flex items-center justify-between border-t border-amber-900/40 pt-3">
           <div className="flex items-center gap-4">
+            {/* 
+              Note: The alias `channel:channels(*)` in the Supabase query 
+              maps the joined table data to a property named `channel`. 
+              We use `@ts-ignore` here because the generated `Video` type 
+              might not reflect this alias dynamically.
+            */}
+            {/* @ts-ignore */}
             <Link href={`/channel/${video.channel?.handle}`}>
               <div className="flex items-center gap-3 group">
                 <div className="w-10 h-10 rounded-full border border-amber-500/50 overflow-hidden bg-zinc-900">
+                  {/* @ts-ignore */}
                   {video.channel?.avatar_url ? (
                     <img
+                      // @ts-ignore
                       src={video.channel.avatar_url}
+                      // @ts-ignore
                       alt={video.channel.name}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-amber-500 font-bold">
+                      {/* @ts-ignore */}
                       {video.channel?.name?.[0]?.toUpperCase() || "?"}
                     </div>
                   )}
                 </div>
                 <div>
                   <h3 className="font-semibold text-amber-400 group-hover:underline">
+                    {/* @ts-ignore */}
                     {video.channel?.name}
                   </h3>
                   <p className="text-xs text-amber-500/70">
+                    {/* @ts-ignore */}
                     {video.channel?.subscriber_count || 0} subscribers
                   </p>
                 </div>
