@@ -35,13 +35,14 @@ function renderCommentWithTimestamps(
         type="button"
         onClick={() => onJumpToTime(totalSeconds)}
         style={{
-          color: "#ff4444",
+          color: "#ff8c00",
           background: "none",
           border: "none",
           padding: 0,
           font: "inherit",
           cursor: "pointer",
           textDecoration: "underline",
+          fontWeight: "bold",
         }}
       >
         {match[0]}
@@ -69,7 +70,6 @@ export default function CommentSection({
 
   useEffect(() => {
     async function fetchComments() {
-      // Fetch comments first
       const { data: rawComments, error } = await supabase
         .from("comments")
         .select("*")
@@ -82,7 +82,6 @@ export default function CommentSection({
         return;
       }
 
-      // Populate channel details for each comment
       const channelIds = Array.from(
         new Set(rawComments.map((c) => c.channel_id).filter(Boolean))
       );
@@ -119,7 +118,8 @@ export default function CommentSection({
       .from("channels")
       .select("id, name, avatar_url")
       .eq("owner_id", user.id)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (!channel) return;
 
@@ -144,25 +144,25 @@ export default function CommentSection({
   }
 
   return (
-    <div style={{ marginTop: 24, borderTop: "1px solid #222", paddingTop: 16 }}>
-      <h3 style={{ fontSize: 16, marginBottom: 12 }}>Comments</h3>
+    <div className="comments-section" style={{ marginTop: 32, borderTop: "1px solid #222", paddingTop: 20 }}>
+      <h3 style={{ fontSize: 18, marginBottom: 16 }}>Comments</h3>
 
       {user ? (
-        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 10, marginBottom: 24 }}>
           <input
             type="text"
             className="input"
             placeholder="Add a comment..."
             value={text}
             onChange={(e) => setText(e.target.value)}
-            style={{ flex: 1 }}
+            style={{ flex: 1, backgroundColor: "#0a0a0a", border: "1px solid #333", color: "#fff", padding: "10px 14px", borderRadius: 4 }}
           />
-          <button type="submit" className="btn">
+          <button type="submit" className="btn btn-primary">
             Comment
           </button>
         </form>
       ) : (
-        <p style={{ color: "#666", fontSize: 14, marginBottom: 16 }}>Log in to comment.</p>
+        <p style={{ color: "#666", fontSize: 14, marginBottom: 20 }}>Log in to post a comment.</p>
       )}
 
       {loading ? (
@@ -170,20 +170,21 @@ export default function CommentSection({
       ) : comments.length === 0 ? (
         <p style={{ color: "#666" }}>No comments yet. Be the first to post!</p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {comments.map((c) => (
-            <div key={c.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div key={c.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", background: "#0d0d0d", padding: 12, borderRadius: 6, border: "1px solid #1a1a1a" }}>
               <div
                 style={{
-                  width: 32,
-                  height: 32,
+                  width: 36,
+                  height: 36,
                   borderRadius: "50%",
-                  backgroundColor: "#333",
+                  backgroundColor: "#222",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: "bold",
+                  flexShrink: 0,
                   overflow: "hidden",
                 }}
               >
@@ -194,9 +195,11 @@ export default function CommentSection({
                   c.channels?.name?.[0]?.toUpperCase() ?? "?"
                 )}
               </div>
-              <div>
-                <p style={{ fontSize: 12, color: "#aaa", margin: 0 }}>{c.channels?.name ?? "User"}</p>
-                <p style={{ fontSize: 14, color: "#fff", margin: "2px 0 0 0" }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 13, color: "#888", margin: 0, fontWeight: 600 }}>
+                  {c.channels?.name ?? "Anonymous"}
+                </p>
+                <p style={{ fontSize: 14, color: "#eee", margin: "4px 0 0 0", lineHeight: 1.4 }}>
                   {renderCommentWithTimestamps(c.content, onJumpToTime)}
                 </p>
               </div>

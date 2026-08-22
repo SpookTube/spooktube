@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
@@ -15,7 +15,7 @@ import SubscribeButton from "../../../components/SubscribeButton";
 import CommentSection from "../../../components/CommentSection";
 import ShareButton from "../../../components/ShareButton";
 
-export default function WatchPage({ params }: { params: { id: string } }) {
+function WatchContent({ videoId }: { videoId: string }) {
   const { user, loading: userLoading } = useUser();
   const { isAdmin } = useIsAdmin(user);
   const router = useRouter();
@@ -31,7 +31,6 @@ export default function WatchPage({ params }: { params: { id: string } }) {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Checkbox state for share timestamp
   const [includeTime, setIncludeTime] = useState(false);
 
   useEffect(() => {
@@ -41,7 +40,7 @@ export default function WatchPage({ params }: { params: { id: string } }) {
       const { data: v } = await supabase
         .from("videos")
         .select("*, channels(*)")
-        .eq("id", params.id)
+        .eq("id", videoId)
         .single();
 
       if (!v || cancelled) {
@@ -53,7 +52,7 @@ export default function WatchPage({ params }: { params: { id: string } }) {
       setChannel(v.channels);
 
       const [{ data: stats }, { data: chStats }] = await Promise.all([
-        supabase.from("video_stats").select("*").eq("video_id", params.id).maybeSingle(),
+        supabase.from("video_stats").select("*").eq("video_id", videoId).maybeSingle(),
         supabase.from("channel_stats").select("*").eq("channel_id", v.channel_id).maybeSingle(),
       ]);
 
@@ -69,7 +68,7 @@ export default function WatchPage({ params }: { params: { id: string } }) {
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [videoId]);
 
   useEffect(() => {
     if (userLoading) return;
@@ -77,13 +76,12 @@ export default function WatchPage({ params }: { params: { id: string } }) {
 
     supabase
       .from("video_views")
-      .insert({ video_id: params.id, viewer_id: viewerId })
+      .insert({ video_id: videoId, viewer_id: viewerId })
       .then(({ error }) => {
         if (!error) setViewCount((c) => c + 1);
       });
-  }, [params.id, user, userLoading]);
+  }, [videoId, user, userLoading]);
 
-  // Auto-jump to time parameter if passed in URL (?t=15)
   useEffect(() => {
     const t = searchParams.get("t");
     if (t && videoRef.current) {
@@ -123,22 +121,22 @@ export default function WatchPage({ params }: { params: { id: string } }) {
   if (!video || !channel) return <div className="page empty">this clip doesn't exist (or got taped over).</div>;
 
   return (
-    <div className="watch-layout">
+    <div className="watch-layout" style={{ maxWidth: 1100, margin: "0 auto", padding: "16px" }}>
       <div>
-        <div className="player-shell" style={{ position: "relative", overflow: "hidden" }}>
+        <div className="player-shell" style={{ position: "relative", width: "100%", aspectRatio: "16/9", backgroundColor: "#000", borderRadius: 8, overflow: "hidden" }}>
           <video
             ref={videoRef}
             src={video.video_url}
             controls
             autoPlay
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         </div>
 
-        {/* Title row with checkbox + share right aligned */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-          <h1 className="watch-title" style={{ margin: 0 }}>{video.title}</h1>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
+          <h1 className="watch-title" style={{ margin: 0, fontSize: 22 }}>{video.title}</h1>
           
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <label style={{ fontSize: 13, color: "#888", cursor: "pointer", display: "flex", gap: 6, alignItems: "center" }}>
               <input
                 type="checkbox"
@@ -154,24 +152,23 @@ export default function WatchPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        {/* Channel & Stats cluster */}
-        <div className="watch-row" style={{ marginTop: 12 }}>
-          <Link href={`/channel/${channel.handle}`} className="channel-chip">
-            <div className="channel-avatar">
+        <div className="watch-row" style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #222", paddingBottom: 16 }}>
+          <Link href={`/channel/${channel.handle}`} className="channel-chip" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+            <div className="channel-avatar" style={{ width: 40, height: 40, borderRadius: "50%", backgroundColor: "#333", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
               {channel.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={channel.avatar_url} alt="" />
+                <img src={channel.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 channel.name[0]?.toUpperCase()
               )}
             </div>
             <div>
-              <p className="channel-name">{channel.name}</p>
-              <p className="channel-subs">{subCount.toLocaleString()} subscribers</p>
+              <p className="channel-name" style={{ margin: 0, color: "#fff", fontWeight: 600 }}>{channel.name}</p>
+              <p className="channel-subs" style={{ margin: 0, fontSize: 12, color: "#888" }}>{subCount.toLocaleString()} subscribers</p>
             </div>
           </Link>
 
-          <div className="action-cluster" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="action-cluster" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <VcrCounter value={viewCount} label="views" />
             <LikeButton videoId={video.id} user={user} initialCount={likeCount} />
             <SubscribeButton channelId={channel.id} ownerId={channel.owner_id} user={user} />
@@ -194,10 +191,22 @@ export default function WatchPage({ params }: { params: { id: string } }) {
         </div>
         {deleteError && <p className="error-text">{deleteError}</p>}
 
-        {video.description && <div className="desc-box">{video.description}</div>}
+        {video.description && (
+          <div className="desc-box" style={{ background: "#111", padding: 14, borderRadius: 6, fontSize: 14, color: "#ccc", margin: "12px 0" }}>
+            {video.description}
+          </div>
+        )}
 
         <CommentSection videoId={video.id} user={user} onJumpToTime={jumpToTime} />
       </div>
     </div>
+  );
+}
+
+export default function WatchPage({ params }: { params: { id: string } }) {
+  return (
+    <Suspense fallback={<div className="page empty">loading tape...</div>}>
+      <WatchContent videoId={params.id} />
+    </Suspense>
   );
 }
