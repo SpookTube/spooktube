@@ -12,6 +12,7 @@ export default function MyChannelsPage() {
   const router = useRouter();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
 
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
@@ -33,6 +34,7 @@ export default function MyChannelsPage() {
       .then(({ data }) => {
         setChannels(data ?? []);
         setLoading(false);
+        if ((data ?? []).length === 0) setShowCreate(true);
       });
   }, [user]);
 
@@ -72,52 +74,83 @@ export default function MyChannelsPage() {
     setName("");
     setHandle("");
     setDescription("");
+    setShowCreate(false);
   }
 
   if (userLoading || loading) return <div className="page empty">loading...</div>;
 
   return (
     <div className="page">
-      <h1 style={{ fontSize: 20 }}>My Channels</h1>
+      <h1 style={{ fontSize: 20, marginBottom: 0 }}>My Channels</h1>
 
-      {channels.length > 0 && (
-        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", marginBottom: 30 }}>
-          {channels.map((c) => (
-            <Link key={c.id} href={`/channel/${c.handle}`} className="panel" style={{ display: "block" }}>
-              <p className="tape-title" style={{ margin: 0 }}>{c.name}</p>
-              <p className="hint" style={{ margin: "4px 0 0" }}>@{c.handle}</p>
-            </Link>
-          ))}
+      <div className="channel-grid">
+        {channels.map((c) => (
+          <Link key={c.id} href={`/channel/${c.handle}`} className="channel-grid-card">
+            <div className="channel-avatar">
+              {c.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={c.avatar_url} alt="" />
+              ) : (
+                c.name[0]?.toUpperCase()
+              )}
+            </div>
+            <p className="channel-grid-name">{c.name}</p>
+            <p className="channel-grid-handle">@{c.handle}</p>
+          </Link>
+        ))}
+
+        {!showCreate && (
+          <button type="button" className="new-channel-tile" onClick={() => setShowCreate(true)}>
+            <span className="plus">+</span>
+            <span>new channel</span>
+          </button>
+        )}
+      </div>
+
+      {showCreate && (
+        <div className="panel" style={{ maxWidth: 460, marginTop: 26 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h2 style={{ fontSize: 15, margin: 0 }}>Start a new channel</h2>
+            {channels.length > 0 && (
+              <button
+                type="button"
+                className="btn"
+                style={{ padding: "4px 10px", fontSize: 11 }}
+                onClick={() => {
+                  setShowCreate(false);
+                  setError(null);
+                }}
+              >
+                cancel
+              </button>
+            )}
+          </div>
+          <form onSubmit={handleCreate} style={{ marginTop: 16 }}>
+            <div className="field">
+              <label>Channel name</label>
+              <input required value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Handle</label>
+              <input
+                required
+                placeholder="e.g. crawlspace-clips"
+                value={handle}
+                onChange={(e) => setHandle(e.target.value)}
+              />
+              <p className="hint">Your channel page will live at /channel/{handle || "your-handle"}</p>
+            </div>
+            <div className="field">
+              <label>Description</label>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
+            {error && <p className="error-text">{error}</p>}
+            <button className="btn btn-primary" type="submit" disabled={creating}>
+              {creating ? "creating..." : "Create channel"}
+            </button>
+          </form>
         </div>
       )}
-
-      <div className="panel" style={{ maxWidth: 460 }}>
-        <h2 style={{ fontSize: 15, marginTop: 0 }}>Start a new channel</h2>
-        <form onSubmit={handleCreate}>
-          <div className="field">
-            <label>Channel name</label>
-            <input required value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>Handle</label>
-            <input
-              required
-              placeholder="e.g. crawlspace-clips"
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
-            />
-            <p className="hint">Your channel page will live at /channel/{handle || "your-handle"}</p>
-          </div>
-          <div className="field">
-            <label>Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-          {error && <p className="error-text">{error}</p>}
-          <button className="btn btn-primary" type="submit" disabled={creating}>
-            {creating ? "creating..." : "Create channel"}
-          </button>
-        </form>
-      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { useUser } from "../../../lib/useUser";
@@ -27,6 +27,8 @@ export default function ChannelPage({ params }: { params: { handle: string } }) 
   const [nameInput, setNameInput] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"videos" | "about">("videos");
+  const [sort, setSort] = useState<"newest" | "popular">("newest");
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +80,13 @@ export default function ChannelPage({ params }: { params: { handle: string } }) 
   const isOwner = !!user && !!channel && user.id === channel.owner_id;
   const canDelete = isOwner || isAdmin;
   const canManage = isOwner || isAdmin;
+
+  const sortedVideos = useMemo(() => {
+    if (sort === "popular") {
+      return [...videos].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0));
+    }
+    return videos; // already newest-first from the query
+  }, [videos, sort]);
 
   function startEditingName() {
     if (!channel) return;
@@ -291,7 +300,6 @@ export default function ChannelPage({ params }: { params: { handle: string } }) 
           <p className="channel-subs" style={{ marginBottom: 4 }}>
             @{channel.handle} · {subCount.toLocaleString()} subscribers
           </p>
-          {channel.description && <p>{channel.description}</p>}
           {avatarError && <p className="error-text">{avatarError}</p>}
         </div>
         <SubscribeButton channelId={channel.id} ownerId={channel.owner_id} user={user} />
@@ -313,17 +321,69 @@ export default function ChannelPage({ params }: { params: { handle: string } }) 
         </div>
       )}
 
-      <div className="page">
-        {videos.length === 0 ? (
-          <div className="empty">no clips on this channel yet.</div>
-        ) : (
-          <div className="grid">
-            {videos.map((v) => (
-              <VideoCard key={v.id} video={v} />
-            ))}
-          </div>
-        )}
+      <div className="shell">
+        <div className="tabs">
+          <button
+            type="button"
+            className={`tab${tab === "videos" ? " active" : ""}`}
+            onClick={() => setTab("videos")}
+          >
+            videos
+          </button>
+          <button
+            type="button"
+            className={`tab${tab === "about" ? " active" : ""}`}
+            onClick={() => setTab("about")}
+          >
+            about
+          </button>
+        </div>
       </div>
+
+      {tab === "videos" ? (
+        <div className="page">
+          {videos.length > 0 && (
+            <div className="sort-bar" style={{ paddingTop: 0 }}>
+              <p className="section-label" style={{ margin: 0 }} />
+              <div className="segmented">
+                <button
+                  type="button"
+                  className={sort === "newest" ? "active" : ""}
+                  onClick={() => setSort("newest")}
+                >
+                  newest
+                </button>
+                <button
+                  type="button"
+                  className={sort === "popular" ? "active" : ""}
+                  onClick={() => setSort("popular")}
+                >
+                  popular
+                </button>
+              </div>
+            </div>
+          )}
+          {videos.length === 0 ? (
+            <div className="empty">no clips on this channel yet.</div>
+          ) : (
+            <div className="grid">
+              {sortedVideos.map((v) => (
+                <VideoCard key={v.id} video={v} />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="page">
+          <div className="panel" style={{ maxWidth: 560 }}>
+            {channel.description ? (
+              <p style={{ margin: 0, color: "var(--static)", lineHeight: 1.6 }}>{channel.description}</p>
+            ) : (
+              <p className="hint" style={{ margin: 0 }}>This channel hasn't added a description yet.</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

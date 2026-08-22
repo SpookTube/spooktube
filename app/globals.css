@@ -676,6 +676,228 @@ button {
   padding: 0 12px;
 }
 
+/* ---------- sort bar ---------- */
+
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 24px;
+}
+
+.sort-bar .section-label {
+  margin: 0;
+  margin-right: auto;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.segmented button {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 7px 13px;
+  border: none;
+  background: var(--paper);
+  color: var(--static);
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--hairline);
+}
+
+.segmented button.active {
+  background: var(--vhs-teal);
+  color: var(--bone);
+}
+
+.segmented button:hover:not(.active) {
+  background: var(--paper-raised);
+  color: var(--bone);
+}
+
+/* ---------- my channels ---------- */
+
+.channel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 18px;
+  padding: 20px 0 8px;
+}
+
+.channel-grid-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 18px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--paper);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.channel-grid-card:hover {
+  border-color: var(--static);
+  background: var(--paper-raised);
+}
+
+.channel-grid-card .channel-avatar {
+  width: 60px;
+  height: 60px;
+  font-size: 21px;
+}
+
+.channel-grid-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-grid-handle {
+  font-size: 11px;
+  color: var(--static-dim);
+  font-family: var(--font-mono);
+}
+
+.new-channel-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 10px;
+  border: 1px dashed var(--hairline);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--static);
+  min-height: 116px;
+}
+
+.new-channel-tile:hover {
+  border-color: var(--vhs-teal-bright);
+  color: var(--bone);
+}
+
+.new-channel-tile .plus {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* ---------- upload layout ---------- */
+
+.upload-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 860px) {
+  .upload-layout {
+    grid-template-columns: minmax(0, 460px) minmax(260px, 1fr);
+    align-items: start;
+  }
+}
+
+.upload-preview {
+  position: sticky;
+  top: 90px;
+}
+
+.upload-preview .section-label {
+  margin: 0 0 12px;
+}
+
+/* ---------- content warning chips ---------- */
+
+.cw-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cw-chip {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--void);
+  color: var(--static);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cw-chip::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--static-dim);
+  flex-shrink: 0;
+}
+
+.cw-chip:hover {
+  border-color: var(--static);
+  color: var(--bone);
+}
+
+.cw-chip.active {
+  background: var(--warning-red);
+  border-color: var(--warning-red);
+  color: var(--bone);
+}
+
+.cw-chip.active::before {
+  background: var(--bone);
+}
+
+/* ---------- tabs (channel page) ---------- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding-top: 18px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.tab {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--static);
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--bone);
+}
+
+.tab.active {
+  color: var(--bone);
+  border-bottom-color: var(--warning-red);
+}
+
 /* ---------- empty states ---------- */
 
 .empty {

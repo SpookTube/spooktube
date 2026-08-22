@@ -1,14 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "../../lib/useUser";
 import { supabase } from "../../lib/supabaseClient";
 import type { Channel } from "../../lib/types";
+import ContentWarningBadge from "../../components/ContentWarningBadge";
 
 const MAX_VIDEO_BYTES = 10 * 1024 * 1024; // 10MB
 const MAX_THUMB_BYTES = 3 * 1024 * 1024; // 3MB
+
+const WARNING_PRESETS = [
+  "jump scares",
+  "gore",
+  "flashing lights",
+  "body horror",
+  "loud noises",
+  "insects",
+  "needles",
+  "blood",
+];
 
 export default function UploadPage() {
   const { user, loading: userLoading } = useUser();
@@ -18,13 +30,29 @@ export default function UploadPage() {
   const [channelId, setChannelId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [contentWarning, setContentWarning] = useState("");
+  const [selectedWarnings, setSelectedWarnings] = useState<string[]>([]);
+  const [customWarning, setCustomWarning] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [thumbPreview, setThumbPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const contentWarning = useMemo(() => {
+    const custom = customWarning
+      .split(",")
+      .map((w) => w.trim())
+      .filter(Boolean);
+    return [...selectedWarnings, ...custom].join(", ");
+  }, [selectedWarnings, customWarning]);
+
+  function toggleWarning(w: string) {
+    setSelectedWarnings((prev) => (prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]));
+  }
+
+  const selectedChannel = channels.find((c) => c.id === channelId);
 
   useEffect(() => {
     if (!userLoading && !user) router.push("/login");
@@ -139,89 +167,126 @@ export default function UploadPage() {
 
   return (
     <div className="page">
-      <div className="panel" style={{ maxWidth: 520 }}>
-        <h1 style={{ fontSize: 18, marginTop: 0 }}>Upload a clip</h1>
-        <form onSubmit={handleSubmit}>
-          <div className="field">
-            <label>Channel</label>
-            <select value={channelId} onChange={(e) => setChannelId(e.target.value)} required>
-              <option value="">choose a channel</option>
-              {channels.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Video file</label>
-            <input
-              type="file"
-              accept="video/*"
-              required
-              onChange={(e) => {
-                const f = e.target.files?.[0] ?? null;
-                if (f && f.size > MAX_VIDEO_BYTES) {
-                  setError(`That file is ${(f.size / (1024 * 1024)).toFixed(1)}MB — 10MB max.`);
-                  setFile(null);
-                  e.target.value = "";
-                  return;
-                }
-                setError(null);
-                setFile(f);
-              }}
-            />
-            <p className="hint">10MB max per clip.</p>
-          </div>
-          <div className="field">
-            <label>Thumbnail (optional)</label>
-            <label className="thumb-picker">
-              {thumbPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={thumbPreview} alt="" />
-              ) : (
-                <span className="thumb-picker-label">click to choose an image</span>
-              )}
+      <h1 style={{ fontSize: 18, margin: "0 0 4px" }}>Upload a clip</h1>
+      <div className="upload-layout">
+        <div className="panel">
+          <form onSubmit={handleSubmit}>
+            <div className="field">
+              <label>Channel</label>
+              <select value={channelId} onChange={(e) => setChannelId(e.target.value)} required>
+                <option value="">choose a channel</option>
+                {channels.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label>Video file</label>
               <input
                 type="file"
-                accept="image/*"
+                accept="video/*"
+                required
                 onChange={(e) => {
                   const f = e.target.files?.[0] ?? null;
-                  if (f && f.size > MAX_THUMB_BYTES) {
-                    setError(`That image is ${(f.size / (1024 * 1024)).toFixed(1)}MB — 3MB max.`);
+                  if (f && f.size > MAX_VIDEO_BYTES) {
+                    setError(`That file is ${(f.size / (1024 * 1024)).toFixed(1)}MB — 10MB max.`);
+                    setFile(null);
                     e.target.value = "";
                     return;
                   }
                   setError(null);
-                  setThumbFile(f);
-                  setThumbPreview(f ? URL.createObjectURL(f) : null);
+                  setFile(f);
+                  setFilePreview(f ? URL.createObjectURL(f) : null);
                 }}
               />
-            </label>
-            <p className="hint">Leave blank to use a frame from the video instead.</p>
+              <p className="hint">10MB max per clip.</p>
+            </div>
+            <div className="field">
+              <label>Thumbnail (optional)</label>
+              <label className="thumb-picker">
+                {thumbPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={thumbPreview} alt="" />
+                ) : (
+                  <span className="thumb-picker-label">click to choose an image</span>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    if (f && f.size > MAX_THUMB_BYTES) {
+                      setError(`That image is ${(f.size / (1024 * 1024)).toFixed(1)}MB — 3MB max.`);
+                      e.target.value = "";
+                      return;
+                    }
+                    setError(null);
+                    setThumbFile(f);
+                    setThumbPreview(f ? URL.createObjectURL(f) : null);
+                  }}
+                />
+              </label>
+              <p className="hint">Leave blank to use a frame from the video instead.</p>
+            </div>
+            <div className="field">
+              <label>Title</label>
+              <input required value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Content warning (optional)</label>
+              <div className="cw-chips">
+                {WARNING_PRESETS.map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    className={`cw-chip${selectedWarnings.includes(w) ? " active" : ""}`}
+                    onClick={() => toggleWarning(w)}
+                  >
+                    {w}
+                  </button>
+                ))}
+              </div>
+              <input
+                placeholder="other, comma-separated"
+                value={customWarning}
+                onChange={(e) => setCustomWarning(e.target.value)}
+              />
+              <p className="hint">Leave everything blank if the clip doesn't need one — shown as a badge on the thumbnail otherwise.</p>
+            </div>
+            <div className="field">
+              <label>Description</label>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
+            {error && <p className="error-text">{error}</p>}
+            <button className="btn btn-primary" type="submit" disabled={submitting}>
+              {status ?? (submitting ? "working..." : "Publish")}
+            </button>
+          </form>
+        </div>
+
+        <div className="upload-preview">
+          <p className="section-label">preview</p>
+          <div className="tape-card" style={{ pointerEvents: "none" }}>
+            <div className="tape-thumb">
+              {thumbPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={thumbPreview} alt="" />
+              ) : filePreview ? (
+                <video src={filePreview} muted preload="metadata" />
+              ) : (
+                <span className="thumb-picker-label">thumbnail preview</span>
+              )}
+              <ContentWarningBadge text={contentWarning} />
+            </div>
+            <div className="tape-meta">
+              <p className="tape-title">{title || "untitled clip"}</p>
+              <p className="tape-channel">{selectedChannel?.name ?? "choose a channel"}</p>
+              <p className="tape-stats">0 views · 0 likes</p>
+            </div>
           </div>
-          <div className="field">
-            <label>Title</label>
-            <input required value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>Content warning (optional)</label>
-            <input
-              placeholder="e.g. jump scares, gore, flashing lights"
-              value={contentWarning}
-              onChange={(e) => setContentWarning(e.target.value)}
-            />
-            <p className="hint">Leave blank if the clip doesn't need one — shown as a badge on the thumbnail otherwise.</p>
-          </div>
-          <div className="field">
-            <label>Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-          {error && <p className="error-text">{error}</p>}
-          <button className="btn btn-primary" type="submit" disabled={submitting}>
-            {status ?? (submitting ? "working..." : "Publish")}
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   );

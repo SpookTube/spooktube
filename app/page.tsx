@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../lib/supabaseClient";
@@ -23,6 +23,7 @@ function HomeContent() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [topChannels, setTopChannels] = useState<TopChannel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState<"newest" | "popular">("newest");
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +96,13 @@ function HomeContent() {
     };
   }, [q]);
 
+  const sortedVideos = useMemo(() => {
+    if (sort === "popular") {
+      return [...videos].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0));
+    }
+    return videos; // already newest-first from the query
+  }, [videos, sort]);
+
   return (
     <div>
       {topChannels.length > 0 && !q && (
@@ -119,6 +127,27 @@ function HomeContent() {
       )}
 
       <div className="page">
+        {!loading && videos.length > 0 && (
+          <div className="sort-bar">
+            <p className="section-label">{q ? `results for "${q}"` : "clips"}</p>
+            <div className="segmented">
+              <button
+                type="button"
+                className={sort === "newest" ? "active" : ""}
+                onClick={() => setSort("newest")}
+              >
+                newest
+              </button>
+              <button
+                type="button"
+                className={sort === "popular" ? "active" : ""}
+                onClick={() => setSort("popular")}
+              >
+                popular
+              </button>
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="empty">loading tapes...</div>
         ) : videos.length === 0 ? (
@@ -127,7 +156,7 @@ function HomeContent() {
           </div>
         ) : (
           <div className="grid">
-            {videos.map((v) => (
+            {sortedVideos.map((v) => (
               <VideoCard key={v.id} video={v} />
             ))}
           </div>
